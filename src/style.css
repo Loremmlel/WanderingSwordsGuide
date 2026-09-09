@@ -1551,3 +1551,8 @@ kbd {
     display: none;
   }
 }
+
+.branch-options label.chosen small,
+.branch-options label:hover small {
+  color: var(--pine);
+}
