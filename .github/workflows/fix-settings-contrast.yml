@@ -1,0 +1,60 @@
+name: Repair settings contrast and verify release
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-settings-contrast.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply selected and hovered route description contrast fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/style.css')
+          text = path.read_text(encoding='utf-8')
+          assert '.branch-options' in text and 'var(--pine)' in text, 'Unexpected stylesheet; refusing to patch'
+          rule = '.branch-options label.chosen small,\n.branch-options label:hover small {\n  color: var(--pine);\n}\n'
+          if rule not in text:
+              path.write_text(text.rstrip() + '\n\n' + rule, encoding='utf-8')
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Run real browser and accessibility checks
+        run: |
+          python -m pip install -r tests/requirements.txt
+          python -m playwright install --with-deps chromium
+          python tests/browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contrast-repair-browser-evidence
+          path: test-results/
+          retention-days: 30
+      - name: Commit verified fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/style.css
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix: improve selected route description contrast'
+            git push origin HEAD:main
+          fi
+      - name: Run the normal verified Pages release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main
