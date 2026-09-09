@@ -2,7 +2,13 @@ name: Verify and deploy
 on:
   push:
     branches: [main]
-    paths-ignore: ['.bootstrap/**', '.github/workflows/prepare-toolchain.yml', '.github/workflows/bootstrap.yml']
+    paths-ignore:
+      - '.bootstrap/**'
+      - '.repair/**'
+      - '.github/workflows/complete-repair.yml'
+      - '.github/workflows/recover-source.yml'
+      - '.github/workflows/prepare-toolchain.yml'
+      - '.github/workflows/bootstrap.yml'
   pull_request:
   workflow_dispatch:
 permissions:
@@ -16,50 +22,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check source is initialized
-        id: ready
-        run: |
-          if [ -f package.json ]; then echo 'value=true' >> "$GITHUB_OUTPUT"; else echo 'value=false' >> "$GITHUB_OUTPUT"; fi
+      - name: Require complete application source
+        run: test -s package.json && test -s src/App.vue && test -s src/data/guide.json
       - uses: actions/setup-node@v4
-        if: steps.ready.outputs.value == 'true'
         with:
           node-version: '24'
           cache: npm
-      - name: Install dependencies
-        if: steps.ready.outputs.value == 'true'
-        run: npm ci
-      - name: Format, types, behavioral rules and production build
-        if: steps.ready.outputs.value == 'true'
+      - run: npm ci
+      - name: Format, types, rules and production build
         run: npm run check
-      - name: Install browser tests
-        if: steps.ready.outputs.value == 'true'
+      - name: Install real browser tests
         run: |
           python -m pip install -r tests/requirements.txt
           python -m playwright install --with-deps chromium
-      - name: Verify real Chromium at a Pages subpath
-        if: steps.ready.outputs.value == 'true'
+      - name: Verify HTTP Pages subpath, persistence and accessibility
         run: python tests/browser.py
       - uses: actions/upload-artifact@v4
-        if: always() && steps.ready.outputs.value == 'true'
+        if: always()
         with:
           name: browser-evidence
           path: test-results/
           retention-days: 30
+      - name: Package reproducible source
+        run: git archive --format=zip HEAD -o WanderingSwordsGuide-source.zip
       - uses: actions/upload-artifact@v4
-        if: success() && steps.ready.outputs.value == 'true'
+        with:
+          name: site-source
+          path: WanderingSwordsGuide-source.zip
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
         with:
           name: site-dist
           path: dist/
           include-hidden-files: true
           retention-days: 30
+      - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v3
-        if: success() && steps.ready.outputs.value == 'true' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           path: dist/
-    outputs:
-      ready: ${{ steps.ready.outputs.value }}
   deploy:
-    if: github.ref == 'refs/heads/main' && needs.build.outputs.ready == 'true'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:
