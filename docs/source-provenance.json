@@ -1,0 +1,11 @@
+{
+  "archive": "逸剑风云决全收集攻略.zip",
+  "archiveSha256": "c47f1d3a761aa81f6b9347391659301b1eb647c12f081640df4eaadb7c150913",
+  "sourceVersion": "ver.1.24.32 + 碧海仙踪 + 武家旧事",
+  "textSha256": {
+    "上": "8edfd1b3aeafdc84ca714ee7485bd265210a31bc6c74451d722e33666df7cb52",
+    "下": "2d1cd67fff01662b32c8a1517685993b9a5b835afa78ae1e8d872c4d8c36d45f"
+  },
+  "textNormalization": "UTF-8; CRLF normalized to LF by Python text reader; no content wording edits",
+  "images": "World map is a compressed WebP derivative. 14 equipment/sparring collection tables remain in the user-provided original archive and are intentionally outside the story-focused site."
+}

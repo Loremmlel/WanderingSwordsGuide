@@ -1,0 +1,9 @@
+node_modules
+dist
+package-lock.json
+public/source
+src/data/guide.json
+docs/content-anchors.json
+
+test-results
+.bootstrap
